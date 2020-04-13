@@ -222,6 +222,29 @@ impl<'a> fmt::Display for GraphQLError<'a> {
 
 impl<'a> std::error::Error for GraphQLError<'a> {}
 
+/// Validates query against schema
+pub fn validate<'a, S, CtxT, QueryT, MutationT, SubscriptionT>(
+    document_source: &'a str,
+    root_node: &'a RootNode<QueryT, MutationT, SubscriptionT, S>
+) -> Result<(), GraphQLError<'a>> 
+where 
+    S: ScalarValue,
+    QueryT: GraphQLType<S, Context = CtxT>,
+    MutationT: GraphQLType<S, Context = CtxT>,
+    SubscriptionT: GraphQLType<S, Context = CtxT>,
+{
+    let document = parse_document_source(document_source, &root_node.schema)?;
+    let mut ctx = ValidatorContext::new(&root_node.schema, &document);
+    visit_all_rules(&mut ctx, &document);
+
+    let errors = ctx.into_errors();
+    if !errors.is_empty() {
+        return Err(GraphQLError::ValidationError(errors));
+    }
+
+    Ok(())
+}
+
 /// Execute a query synchronously in a provided schema
 pub fn execute_sync<'a, S, CtxT, QueryT, MutationT, SubscriptionT>(
     document_source: &'a str,

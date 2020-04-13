@@ -29,7 +29,7 @@ pub struct GraphQLRequest<S = DefaultScalarValue>
 where
     S: ScalarValue,
 {
-    query: String,
+    pub query: String,
     #[serde(rename = "operationName")]
     operation_name: Option<String>,
     #[serde(bound(deserialize = "InputValue<S>: Deserialize<'de> + Serialize"))]
@@ -70,6 +70,21 @@ where
             variables,
         }
     }
+
+    pub fn validate<'a, CtxT, QueryT, MutationT, SubscriptionT>(
+        &'a self,
+        root_node: &'a RootNode<QueryT, MutationT, SubscriptionT, S>,
+        context: &CtxT,
+    ) -> Result<(), GraphQLError>
+    where
+        S: ScalarValue,
+        QueryT: GraphQLType<S, Context = CtxT>,
+        MutationT: GraphQLType<S, Context = CtxT>,
+        SubscriptionT: GraphQLType<S, Context = CtxT>,
+    {
+        crate::validate(&self.query, &root_node)
+    }
+
 
     /// Execute a GraphQL request synchronously using the specified schema and context
     ///
